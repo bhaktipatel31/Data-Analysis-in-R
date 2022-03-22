@@ -1,10 +1,3 @@
----
-title: "Assignment 3"
-author: "Bhakti Patel"
-date: "4/12/2021"
-output: pdf_document
----
-
 ```{r}
 data<-read.csv("C:/Users/bhakt/Downloads/credit default.csv")
 View(data)
@@ -514,19 +507,3 @@ lines(1:K, accuracy, col=8, "l")
 ```
 
 3.3 Explanation: It's robust because the prediction metrics for all the lines from 1 to 8 look close and stable. In the yellow line, there's a minor deviation for the TPR but that is okay. As long as we don't see something very volatile, we should be fine. Therefore, for this model, we can that it has acceptable robustness.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
