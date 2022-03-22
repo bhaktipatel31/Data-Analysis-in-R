@@ -1,0 +1,153 @@
+---
+title: "Assignment1"
+author: "Bhakti Patel"
+date: "2/21/2021"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+PART 1
+```{r}
+library(tinytex)
+library(nutshell)
+library(lattice)
+library(dplyr)
+
+library(readxl)
+contribution <- read_excel("contribution.xlsx")
+
+## 1
+dim(contribution) #dimension
+```
+```{r}
+## 2
+head(contribution)
+str(contribution) #use to inspect variable classes
+```
+```{r}
+## 3
+num_col <- unlist(lapply(contribution, is.numeric)) #use to check numeric vals
+num_col
+
+summary(contribution) #overview
+```
+
+```{r}
+##4 data.table 
+#alumni not making contributions
+
+alum_noc <- sum(contribution$FY04Giving == 0 & contribution$FY03Giving == 0 & contribution$FY02Giving == 0 & contribution$FY01Giving == 0 & contribution$FY00Giving == 0) 
+alum_noc
+
+```
+
+```{r}
+##4 
+#alumni that made contributions
+alum_c <- 1230 - alum_noc 
+alum_c
+
+```
+```{r}
+##4 
+# % alumni making contributions
+prct_alumc <-((1230-alum_noc)/1230)*100 
+prct_alumc
+
+```
+
+```{r}
+##4 
+# % alumni not making contributions
+prct_alumnoc<- ((1230-alum_c)/1230)*100 
+prct_alumnoc
+```
+
+```{r}
+## 5 
+sum(contribution$`Next Degree`!="NONE")
+```
+```{r}
+## 6
+sum(contribution$`Gender`== "F" & contribution$`Next Degree`=="PHD") 
+```
+
+```{r}
+## 7
+contribution%>%mutate(TGiving=FY04Giving+FY03Giving+FY02Giving+FY01Giving+FY00Giving)->contribution #create total contribution column
+sum(contribution[,'TGiving']) #total amount contributed by all alumni
+contribution%>%group_by(`Class Year`)%>%summarise(Total_Contribution=sum(TGiving))%>%ungroup()%>%arrange(-Total_Contribution) #alumni amount contribution by class year
+
+```
+
+PART 2
+```{r}
+library(lattice)
+
+## 1
+barchart(table(contribution$`Class Year`),horizontal=FALSE,xlab="Class Year",ylab="Alumni Count", col="cyan")
+```
+
+```{r}
+## 2
+
+hist(contribution$TGiving[contribution$`Class Year`=="1997"], xlab="Total Contribution", main="Total Contribution for the Class of 1997", col="red")
+```
+
+```{r}
+## 3
+contribution$TGiving1 <- contribution$TGiving
+contribution$TGiving1[contribution$TGiving1 >= 4000] <- NA
+densityplot(~TGiving1|factor(`Class Year`),data=contribution[contribution$TGiving1<=4000,][contribution[contribution$TGiving1<=4000,]$TGiving1>0,],plot.points=FALSE,xlab="Class Year", main="Density Plot of Revised Total Contribution",col="purple") #density plot for each grad class 
+```
+```{r}
+## 4
+boxplot(TGiving1~ `Class Year`, data=contribution,outline=TRUE, ylab="Revised Total Contribution", main="Boxplot of Revised Total Contribution", col="purple") #boxplot for each grad class with outliers 
+
+```
+
+```{r}
+## 5
+fm = filter(contribution, contribution$`Class Year` == "1957")
+barchart(fm[,c("Gender", "TGiving1")],horizontal=FALSE,xlab="Gender",ylab="Revised Total Contribution", col="purple")
+
+```
+
+```{r}
+## 6
+library(data.table)
+setDT(contribution)
+conR = contribution[TGiving<=4000]
+
+conR[median(conR$TGiving,group=conR$`Class Year`)]
+m.median=conR[Gender=="M", median(TGiving),by=`Class Year`]
+f.median=conR[Gender=="F", median(TGiving),by=`Class Year`]
+
+
+a=as.vector((m.median[,`Class Year`]))
+b=(m.median[,V1])
+y_fem=((f.median[,V1]))
+
+
+plot(a,b,type="l",col="purple",xlab="Class",ylab="Median values")
+lines(a,y_fem,col="green")
+legend("topright",legend=c("Female","Male"),col=c("green", "purple"),lty=1) 
+
+```
+
+```{r}
+##7 female alumni from most generous contribution class, know % of major
+prct =contribution[Gender=="F" & `Class Year` =="1957"] 
+histogram(as.factor(prct$Major),type="percent", xlab="Majors", ylab="Percent", col="purple")
+```
+
+```{r}
+## 8 scatterplot
+plot(contribution$FY00Giving, contribution$TGiving, type="p", col="lightblue", pch=8, xlab="Year 2000 Giving", ylab="Total Contribution")
+plot(contribution$FY01Giving, contribution$TGiving, type="p", col="lightblue", pch=8, xlab="Year 2001 Giving", ylab="Total Contribution")
+plot(contribution$FY02Giving, contribution$TGiving, type="p", col="lightblue", pch=8, xlab="Year 2002 Giving", ylab="Total Contribution")
+plot(contribution$FY03Giving, contribution$TGiving, type="p", col="lightblue", pch=8, xlab="Year 2003 Giving", ylab="Total Contribution")
+plot(contribution$FY04Giving, contribution$TGiving, type="p", col="lightblue", pch=8, xlab="Year 2004 Giving", ylab="Total Contribution")
+
+```
