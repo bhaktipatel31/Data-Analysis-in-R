@@ -1,0 +1,532 @@
+---
+title: "Assignment 3"
+author: "Bhakti Patel"
+date: "4/12/2021"
+output: pdf_document
+---
+
+```{r}
+data<-read.csv("C:/Users/bhakt/Downloads/credit default.csv")
+View(data)
+
+###split data into training and testing dataset
+train<-data[1:20000, ]
+test<-data[20001:nrow(data), ]
+```
+
+PART 1
+1.1
+Categorical variables: SEX, EDUCATION, and MARRIAGE
+
+1.2
+```{r}
+#plot(LIMIT_BAL~default.payment.next.month, data = train,  pch=16, type="p", col = "coral")
+```
+```{r}
+xaxis <- c(1:20000)
+yaxis <- train$default.payment.next.month
+plot(xaxis, yaxis, pch=16, type="p", col="coral")
+```
+1.2 Explanation: This scatterplot is showing us that we cannot run a linear regression because this graph is categorical.
+
+1.3
+```{r}
+m1<-glm(default.payment.next.month~ LIMIT_BAL, family=binomial, data=train)
+m1
+
+s1<-summary(m1)
+s1
+```
+1.4
+
+```{r}
+sc=glm(default.payment.next.month~LIMIT_BAL, family="binomial", data=train)
+scurve = sort(sc$LIMIT_BAL)
+#unique(scurve)
+
+fit1=c()
+limbal=c()
+
+for(i in 1:991) 
+{ 
+  limbal[i] = (i+9)*1000
+  fit1[i] = 1/(1+exp(-m1$coefficients[1]+limbal[i]*m1$coefficients[2]))
+}
+
+plot(limbal, fit1, type="l", ylab="Prob(Loan Default)", xlab="Limit Balance", ylim=c(0,1))
+```
+##1.4 S-Curve attempt 2
+```{r}
+library(popbio)
+logi.hist.plot(train$LIMIT_BAL, train$default.payment.next.month, boxp = FALSE, type="hist", col="black", mainlabel = "S-Curve")
+```
+
+
+
+
+1.5
+```{r}
+m2<-glm(default.payment.next.month~., family = binomial, data=train)
+summary(m2)
+
+```
+
+1.6 Explanation: I will use the Wald Test to decide the statistical significance of individual predictors. At a level of significance 0.001, LIMIT_BAL and Intercept are statistically significant because the p-values are smaller than the significant value. If the level of significance is changed to 0.05, LIMIT_BAL and Intercept would still be statistically significant because the p-values are smaller than the significant value.
+
+
+1.7 Explanation: The model in Q5 has a better fitness because it has a lower AIC value than the model in Q3. 
+
+
+1.8
+```{r}
+D<-m2$null.deviance-m2$deviance
+D
+df<-2
+
+C<-qchisq(0.05, df=df, lower.tail=F)
+C
+
+#D is much larger than C
+
+pchisq(D, df=df, lower.tail=F)
+```
+1.8 Explanation: After performing the deviance test for the model in Q5, I got a p-value of 0 which is less than the significant value of 0.05, therefore this model is statistically significant. 
+
+
+1.9
+```{r}
+m3<-step(m2, direction = "both", steps=100)
+summary(m3)
+```
+1.9 Explanation: If we compare all the model selections using the stepwise variable selection method, the best model has an AIC of 19005.
+
+
+1.10 Explanation: The best model has 17 predictors. If we compare the best model(AIC:19005) to the start model(AIC:19016.83),we see that the best model has the smaller AIC value. The smaller the AIC value is, the better the model fitness. There was an improvement by 11 AIC values. 
+
+
+PART 2
+
+2.1
+
+```{r}
+pred <- predict(m3, newdata = test, type="response", main="Boxplot Prediction Result")
+boxplot(pred, outline=F)
+median(pred)
+```
+
+2.2 Explanation: The largest cutoff threshold to use if we want to have at least 50% of the testing data assigned a label “1” would be 0.187.
+
+2.3
+```{r}
+cutoff<-0.5
+ypred<-rep(0, nrow(test))
+ypred[which(pred>=cutoff)]<-1
+#ypred
+
+#### confusion matrix ####
+y<-test$default.payment.next.month
+
+cm<-table(ypred, y, dnn=c("pred", "true"))
+cm
+  
+```
+FPR and FNR
+```{r}
+#False Positive Rate
+FPR<-cm[2,1]/sum(cm[2,1]+cm[1,1])
+FPR
+
+#False Negative Rate
+FNR<-cm[1,2]/sum(cm[1,2]+cm[2,2])
+FNR
+```
+
+TPR and TNR
+```{r}
+## TPR 
+TPR <- 1-FNR
+TPR
+
+##TNR
+TNR <- 1-FPR
+TNR
+```
+
+recall, precision, and accuracy
+```{r}
+TP <- cm[2,2]
+FP <- cm[2,1]
+
+##recall
+recall <- TP/(TP+FN)
+recall
+
+##precision
+precision <- TP/(TP+FP)
+precision
+
+##accuracy
+accuracy<-(cm[1,1]+cm[2,2])/sum(cm)
+accuracy
+```
+
+2.4 Explanation: 
+Our precision value of 0.7 is a little high. It should be no smaller than 0 and no larger than 1.So we would consider about 70% as acceptable for this data. The higher the precision is, the better the discovery rate is. This means the model has an okay tendency to make true predictions for the positive case.
+
+If the False Positive Rate is not larger than 0.1 or 0.05, then we can say that this model has a good performance in not making false alarms. Our FPR is 0.02 which is less than this range, so this shows that we have a high false positive rate which indicates that the model is less accurate and often makes false alarms for the positive case. 
+
+Our accuracy for this model is okay because it's over 80%. The overall accuracy is the aggregation of the true prediction for both the positive and negative case.
+
+
+2.5
+```{r}
+Order<-order(pred, decreasing=T)
+test1<-test[Order, ]
+
+x<-1:nrow(test)
+y<-cumsum(test1$default.payment.next.month)
+
+plot(x, y, type="p", xlab="# case predicted", ylab="true prediction")
+lines(x[c(1, nrow(test))], y[c(1, nrow(test))])
+
+
+x1<-x/nrow(test)
+y1<-y/nrow(test)
+
+plot(x1, y1, type="p", xlab="# case predicted", ylab="true prediction")
+lines(x1[c(1, nrow(test))], y1[c(1, nrow(test))])
+```
+2.5 Explanation: Both the plots look the same, but for lift curve 2 our x and y axis became a ratio or rate which is a better way to do prediction. So while analyzing the 1st lift curve, if we're predicting for 2000 cases, we would have roughly 1000 true predictions. When analyzing the 2nd lift curve, if we make 20% of our predictions, we will have 10% to be true predictions. Basically, the faster we accumulate true prediction, the better our power of model is going to be. In our case, since our curve is closer to the diagonal line, our detection power is less accurate. 
+
+2.6
+```{r}
+y<-test$default.payment.next.month
+
+#ROC
+FPR1<-c()
+TPR1<-c()
+Cut<-seq(0, 1, 0.01)
+
+for(i in 1:length(Cut))
+{
+  cutoff<- Cut[i]
+  ypred<-rep(0, nrow(test))
+  ypred[which(pred>=cutoff)]<-1
+  
+  FP<-0
+  TP<-0
+  FN<-0
+  TN<-0
+  
+  for(j in 1:length(ypred))
+  {
+    if(y[j]==0 & ypred[j]==1)
+      FP<-FP+1
+    if(y[j]==1 & ypred[j]==1)
+      TP<-TP+1
+    if(y[j]==1 & ypred[j]==0)
+      FN<-FN+1
+    if(y[j]==0 & ypred[j]==0)
+      TN<-TN+1
+  }
+  
+  FPR1[i]<-FP/(FP+TN)
+  TPR1[i]<-TP/(TP+FN)
+
+}
+
+plot(FPR1, TPR1, "p")
+lines(c(0,1), c(0,1))
+
+plot(FPR1, TPR1, "l") #just changed the p to l
+lines(c(0,1), c(0,1), lty=2)
+```
+2.6 Explanation: The ROC curve shows the trade-off between sensitivity (or TPR) and specificity (1 – FPR). Curves closer to the top-left corner indicate a better performance. The closer the curve comes to the diagonal line of the ROC space, the less accurate the test. Therefore, in our case, since the ROC curve is closer to the diagonal line, the detection power is less accurate for positive cases. Comparing Q4, Q5, and Q6, I would prefer to evaluate the detection power using Q6 ROC Curve because it's easier to indicate the performance of the model based on these two criteria(Curves closer to the top-left corner indicates a better performance and closer to the diagonal line, means it's less accurate), which helps us determine the detection power faster. 
+
+
+
+PART 3
+
+```{r}
+data2<-read.csv("C:/Users/bhakt/Downloads/credit default.csv")
+#View(data2)
+
+data3<-data2[sample(1:nrow(data2), nrow(data2)), ]  ##we're randomly shuffling data2 in data3
+
+###split data into training and testing dataset
+trainA<-data3[1:20000, ]
+testA<-data3[20001:nrow(data), ]
+
+mA<-glm(default.payment.next.month~., family=binomial, data=trainA)
+
+cutoff<-0.5
+K<-4
+len<-floor(nrow(data)/K)
+
+AIC<-c()
+FPR<-c()
+FNR<-c()
+TPR<-c()
+TNR<-c()
+accuracy<-c()
+recall<-c()
+precision<-c()
+#table1=table()
+#table2=table()
+#table3=table()
+#table4=table()
+
+for(i in 1:K)
+{
+  index<-seq(((i-1)*len), i*len, 1)
+  testA<-data3[index, ]
+  trainA<-data3[-index, ]
+  
+  mB<-mA
+  #mstep = step(mB, direction="both", steps=100)
+  
+  AIC[i]<-mB$aic
+  
+  pred<-predict(mB, newdata = testA)
+  ypred<-rep(0, nrow(testA))
+  ypred[which(pred>=cutoff)]<-1
+  
+
+  cm<-table(ypred, testA$default.payment.next.month, dnn=c("pred", "true"))
+  #if(i == 1)
+   # {table1 = cm}
+  #if(i == 2)
+   # {table2 = cm}
+  #if(i == 3)
+   # {table3 = cm}
+  #if(i == 4)
+   # {table4 = cm}
+  FPR[i]<-cm[2,1]/sum(c(cm[2,1], cm[1,1]))
+  FNR[i]<-cm[1,2]/sum(c(cm[1,2], cm[2,2]))
+  TPR[i]<-1-FNR[i]
+  TNR[i]<-1-FPR[i]
+  accuracy[i]<-sum(c(cm[1,1], cm[2,2]))/(sum(cm))
+  recall[i]<-1-FNR[i]
+  precision[i]<-cm[2,2]/sum(c(cm[2,1], cm[2,2]))
+}
+
+#AIC
+#table1
+#table2
+#table3
+#table4
+
+y<-testA$default.payment.next.month
+tab1<-table(ypred, y, dnn=c("pred", "true"))
+tab1
+
+tab2<-table(ypred, y, dnn=c("pred", "true"))
+tab2
+```
+```{r}
+tab2<-table(ypred, y, dnn=c("pred", "true"))
+tab2
+```
+
+
+3.2
+FPR and FNR
+```{r}
+#False Positive Rate
+FPR<-cm[2,1]/sum(cm[2,1]+cm[1,1])
+FPR
+
+#False Negative Rate
+FNR<-cm[1,2]/sum(cm[1,2]+cm[2,2])
+FNR
+```
+
+TPR and TNR
+```{r}
+## TPR 
+TPR <- 1-FNR
+TPR
+
+##TNR
+TNR <- 1-TPR
+TNR
+```
+
+recall, precision, and accuracy
+```{r}
+TP <- cm[2,2]
+FP <- cm[2,1]
+
+##recall
+recall <- TP/(TP+FN)
+recall
+
+##precision
+precision <- TP/(TP+FP)
+precision
+
+##accuracy
+accuracy<-(cm[1,1]+cm[2,2])/sum(cm)
+accuracy
+```
+
+3.3 Explanation: It's robust because the prediction metrics for the red line from 1 to 4 CV look close and stable. In the green line, there's a minor deviation for the FNR but that is okay. As long as we don't see something very volatile, we should be fine. For this model, we can that it has acceptable robustness.
+
+
+
+
+
+
+```{r}
+data2<-read.csv("C:/Users/bhakt/Downloads/credit default.csv")
+#View(data2)
+
+data3<-data2[sample(1:nrow(data2), nrow(data2)), ]  ##we're randomly shuffling data2 in data3
+
+###split data into training and testing dataset
+trainA<-data3[1:20000, ]
+testA<-data3[20001:nrow(data), ]
+
+cutoff<-0.5
+K<-4
+len<-floor(nrow(data)/K)
+
+AIC<-c()
+FPR<-c()
+FNR<-c()
+TPR<-c()
+TNR<-c()
+accuracy<-c()
+recall<-c()
+precision<-c()
+
+
+for(i in 1:K)
+{
+  index<-seq(((i-1)*len), i*len, 1)
+  testA<-data3[index, ]
+  trainA<-data3[-index, ]
+  
+  mB<-glm(default.payment.next.month~., family=binomial, data=trainA)
+  AIC[i]<-mB$aic
+  
+
+  pred<-predict(mB, newdata = testA)
+  ypred<-rep(0, nrow(testA))
+  ypred[which(pred>=cutoff)]<-1
+  
+
+  cm<-table(ypred, testA$default.payment.next.month, dnn=c("pred", "true"))
+  print(cm)
+
+  FPR[i]<-cm[2,1]/sum(c(cm[2,1], cm[1,1]))
+  FNR[i]<-cm[1,2]/sum(c(cm[1,2], cm[2,2]))
+  TPR[i]<-1-FNR[i]
+  TNR[i]<-1-FPR[i]
+  accuracy[i]<-sum(c(cm[1,1], cm[2,2]))/(sum(cm))
+  recall[i]<-1-FNR[i]
+  precision[i]<-cm[2,2]/sum(c(cm[2,1], cm[2,2]))
+}
+
+print(AIC)
+```
+
+```{r}
+data2<-read.csv("C:/Users/bhakt/Downloads/credit default.csv")
+#View(data2)
+
+data3<-data2[sample(1:nrow(data2), nrow(data2)), ]  ##we're randomly shuffling data2 in data3
+
+###split data into training and testing dataset
+trainA<-data3[1:20000, ]
+testA<-data3[20001:nrow(data), ]
+
+cutoff<-0.5
+K<-4
+len<-floor(nrow(data)/K)
+
+AIC<-c()
+FPR<-c()
+FNR<-c()
+TPR<-c()
+TNR<-c()
+
+recall<-c()
+precision<-c()
+accuracy<-c()
+cm<-array(0, dim=c(2,2,4))
+#cm[,,1]
+
+for(i in 1:K)
+{
+  index<-seq(((i-1)*len), i*len, 1)
+  testA<-data3[index, ]
+  trainA<-data3[-index, ]
+  
+  mB<-glm(formula = default.payment.next.month ~ LIMIT_BAL + SEX + 
+    EDUCATION + MARRIAGE + AGE + PAY_0 + PAY_2 + PAY_3 + PAY_5 + 
+    BILL_AMT1 + BILL_AMT2 + BILL_AMT5 + PAY_AMT1 + PAY_AMT2 + 
+    PAY_AMT3 + PAY_AMT4 + PAY_AMT6, family = binomial, data = trainA)
+  
+  AIC[i]<-mB$aic
+  pred<-predict(mB, newdata = testA)
+  ypred<-rep(0, nrow(testA))
+  ypred[which(pred>=cutoff)]<-1
+  
+
+  cm[,,i]<-table(ypred, testA$default.payment.next.month, dnn=c("pred", "true"))
+  
+  TP<-cm[2,2,i]
+  FP<-cm[2,1,i]
+  TN<-cm[1,1,i]
+  FN<-cm[1,2,i]
+  
+  FPR[i]<-FP/(FP+TN)
+  FNR[i]<-FN/(FN+TP)
+  TPR[i]<-1-FNR[i]
+  TNR[i]<-1-FPR[i]
+  recall[i]<-TP/(TP+FN)
+  precision[i]<-TP/(TP+FP)
+  accuracy[i]<-(TP+TN)/(TP+TN+FP+FN)
+}
+
+```
+
+```{r}
+for(i in 1:K)
+{
+  message("CV ", as.character(i))
+  message("AIC: ", AIC[i])
+  message("cm: ")
+  print(cm[,,i])
+}
+```
+
+```{r}
+plot(1:K, FPR, col=2, "l", ylim=c(0,1), xlab="CV", ylab="rate", xaxt="n")
+axis(1, at=1:K, labels=1:K)
+lines(1:K, FNR, col=3, "l")
+lines(1:K, TPR, col=4, "l")
+lines(1:K, TNR, col=5, "l")
+lines(1:K, recall, col=6, "l")
+lines(1:K, precision, col=7, "l")
+lines(1:K, accuracy, col=8, "l")
+```
+
+3.3 Explanation: It's robust because the prediction metrics for all the lines from 1 to 8 look close and stable. In the yellow line, there's a minor deviation for the TPR but that is okay. As long as we don't see something very volatile, we should be fine. Therefore, for this model, we can that it has acceptable robustness.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
