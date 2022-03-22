@@ -1,0 +1,302 @@
+---
+title: "Patel, Bhakti Assignment 2"
+output:word_document:
+  reference_docx: my-styles.docx
+output: word_document
+---
+
+```{r}
+library(data.table) 
+library(car)
+
+oj_asmt2 <- read.csv("C:/Users/bhakt/Downloads/oj_asmt2.csv")
+#View(oj_asmt2)
+setDT(oj_asmt2)
+```
+
+Part 1
+```{r}
+#1 
+x1 = data.frame("Educ" = oj_asmt2$EDUC, "HVAL150" = oj_asmt2$HVAL150)
+#View(x1)
+
+#train1 = x1[1:15000, ]
+#View(training1)
+
+#test = x1[15001:28947, ]
+#test = x1[15001: nrow(oj_asmt2), ]
+#View(test)
+
+train1=oj_asmt2[c(1:15000), ] 
+test = oj_asmt2[c(15001:28947),]
+xy = lm(HVAL150~EDUC, data=train1)
+
+```
+
+1.1
+Dependent variable = HVAL150
+Independent variable = EDUC
+
+1.2
+```{r}
+#2 
+plot(oj_asmt2$HVAL150~oj_asmt2$EDUC, xlab="EDUC", ylab="HVAL150", main="Scatter Plot", col="red")
+```
+1.2 Explanation: Yes we can assume that there is a linear change in the scatter plot because as HVAL150 increases/rises, EDUC also rises. This shows that the relationship is directly varied and thus there is an approximated linear relationship.
+
+1.3
+```{r}
+y = lm(x1$HVAL150~x1$Educ, data = x1)
+
+summary(y)
+```
+1.3 Explanation: Since the p value, 2.2e-16 is smaller than alpha of 0.05, therefore this is statistically significant.
+
+1.4
+```{r}
+boxplot(resid(y), ylab = "residual values", range = 1)
+```
+1.4 Explanation: The residual standard error is 0.1103 and the degrees of freedom is 28945. The boxplot of this model shows the distribution of the error. The Boxplot is apparent as it shows that the median is nearly 0.0, which means that the majority of the data is the right fit for this model. Although, there are 3 outliers that deviate from the predicted model, 2 outliers near -0.3 and 1 outlier near 0.2, however, most of the data is residing between an error of -0.1 < x < 0.1.
+
+1.5
+```{r}
+plot(y)
+```
+1.5 Explanation: 
+Linearity assumption is not violated because the it's not curvilinear. Independence of errors assumption is not violated because  we don't see a pattern. The independence is well-respected, the colinear tendency is not that standard, and the variation of standardized residual is in range. Therefore, there is no violation of the residual. Normality assumption is violated because even though most of the residuals are aligned with diagonal line, the residuals move away from the diagonal line at the beginning and end of the graph. Equal variance assumption is not violated because there is approximate constant variance throughout the model. 
+
+
+1.6
+1.6 Explanation: Since there is only one regressor, the Adj R^2 would be used to offset the lost of a degree of freedom due to the addition of the regressor.Therefore, since there is 1 independent variable, r^2 and Adjusted R^2 don’t change 
+
+```{r}
+summary(oj_asmt2)
+```
+
+1.7 
+Regression Equation is y = 1.92718x - 0.09111
+```{r}
+summary(lm(test$HVAL150~test$EDUC, data = test))
+
+```
+
+```{r}
+#MSE
+ed=lm(HVAL150~EDUC, data=train1)
+pred = predict(ed, test) 
+ytrue=test$HVAL150 
+
+MSE=mean((pred-ytrue)^2, na.rm = T) 
+MSE
+```
+
+
+```{r}
+plot(pred, test$HVAL150, xlab="Predicted values", ylab="True values", main = "HVAL150 Predicted vs True Values") 
+abline(a=0,b=1)
+```
+1.7 Explanation: MSE is a better prediction because since 0.012 < 0.5, it reflects that it has a good ability to accurately predict the data.
+
+2.1
+```{r}
+library(lattice)
+library(leaps)
+
+```
+```{r}
+j1 = oj_asmt2[-1,-2]
+j2 = oj_asmt2[-1,-2]
+oj4 = j1[-1]
+rm(j1)
+
+ojtrain = data.frame(oj4[1:15000, ])
+ojtest = data.frame(oj4[15001:28946, ])
+
+m1 = lm(train1$HVAL150~., data=train1)
+summary(m1)
+heatmap(cor(ojtrain), col=cc)
+```
+2.1 Explanation: The boxes darkest in color red are the least correlated. HVAL150 and EDUC are the most correlated because they are the lightest in color. Another interesting finding from this heatmap is each variable to itself, for instance AGE60 to AGE60, price to price, and more are positively correlated with a value of 1. A correlation of +1 value indicates a perfect positive correlation, meaning that both variables move in the same direction together.
+
+
+2.2
+```{r}
+#Multiple Regression
+library(leaps)
+library(lattice)
+
+m1 = lm(train1$HVAL150~train1$logmove+train1$feat+train1$price+train1$AGE60+train1$EDUC+train1$ETHNIC+train1$INCOME+train1$HHLARGE+train1$WORKWOM+train1$SSTRDIST+train1$SSTRVOL+train1$CPDIST5+train1$CPWVOL5, data.frame = train1)
+summary(m1)
+#plot(m1)
+```
+2.2 Explanation: feat is insignificant at 0.001 because it is greater than the significant value and the p-value of 0.05. The rest are all significant because they are small enough and less than the p-value.
+
+2.3
+```{r}
+library(car)
+VIF <- vif(m1)
+VIF
+
+thresh <- 5
+which(VIF>thresh)
+```
+2.3 Explanation: Income has the most multicolinearity because it has the highest value.
+
+2.4
+```{r}
+summary(m1)
+```
+2.4 Explanation: The larger the value of adjr^2, the better the fitness. Therefore, since the adjr^2 is 0.8474 which is large and very close to the r2, this model has a good fitness.
+
+2.5
+```{r}
+m2 <- regsubsets(train1$HVAL150~ ., data=train1[,], method="forward")
+m2
+s2<-summary(m2)
+s2
+```
+2.5 (plot)
+```{r}
+plot(m2, scale="adjr2")
+#s2$rsq
+```
+2.5 Explanation: According to the adjr^2 plot, we have the best 3 regressor model with AGE60, EDUC, and SSTRVOL as our regressors. The 3rd model from bottom has adjr^2 = 0.83 where the 3 regressors are first found. I determined the regressors by looking at the adjr2 plot.
+
+2.6
+```{r}
+m<-regsubsets(HVAL150~ ., data=train1, method="forward")
+m
+s<-summary(m)
+s
+plot(m2, scale="Cp")
+#s2$cp
+```
+2.6 Explanation: By using the Mallow's Cp method, the result of variable selection is the same as compared to the adjr^2. The best  regressors in this model would be "STORE", "AGE60", "EDUC", "INCOME", "HHLARGE", "SSTRVOL", "CPDIST5", AND "CPWVOL5" since we are keeping 8 attributes and they are the lowest CP values. The other variables in the graph would depend on the number of attributes we want in the prediction model. The higher the model complexity as you're including a lot of independent variables(I determined by looking at the Cp chart), therefore they are the best to subset.
+
+2.7 Explanation: The 5 regressors to be included in the best model based on the adjr^2 would be with adjr^2 of 0.84 with AGE60, EDUC, HHLARGE, SSTRVOL, and CPWVOL5.
+
+2.8
+```{r}
+m3 <- lm(HVAL150 ~ AGE60 + EDUC + HHLARGE + SSTRVOL + CPWVOL5, data=train1)
+summary(m3)
+#plot(m3)
+```
+2.8 Explanation: Since the p value, 2.2e-16 is smaller than alpha of 0.05, therefore this best model is statistically significant. The larger the value of adjr^2, the better the fitness. Therefore, since the adjr^2 value,0.8383, which is large and this model has small p-value, overall it has a good fitness and prediction.
+
+2.9
+2.9 Explanation: This model is statistically significant at level of 0.01 because 2.2e-16 < 0.01. None of the 5 regressors are insignificant at 0.05 since their p-values are small enough.
+
+
+2.10
+```{r}
+library(dplyr)
+library(nutshell)
+library(Metrics)
+pred = predict(m3, newdata=test, type="response")
+ytrue = test$HVAL150
+#MAPE<-100*mean(abs(pred-ytrue)/ytrue, na.rm=T)
+MAPE <- mape(ytrue,pred);mape
+MAPE
+```
+2.10 Explanation: Our MAPE value is 100.4942 which is really high and this means that the errors are "much greater" then the actual values. Therefore, our MAPE value is saying that for our prediction error, we have a lot of errors.
+
+
+PART 3
+
+3.1
+```{r}
+BP <- 6 
+KL <- oj_asmt2
+len <- floor(nrow(KL)/BP) #number of obs. in each segment
+nrow(KL)
+len
+bp <- 1
+index <- ((BP-1)*len+1):(BP*len)
+index
+
+test3 <- KL[index, ]
+train3 <- KL[-index, ]
+fit<-lm(test3$HVAL150 ~test3$AGE60 + test3$EDUC+test3$HHLARGE+test3$SSTRVOL+test3$CPWVOL5, data=test3)
+```
+```{r}
+pred<-matrix(, len, BP)
+test.all<-matrix(, len, BP)
+pred.err <-matrix(, len, BP)
+
+for(bp in 1:BP)
+  {
+  index<-((bp-1)*len+1):(bp*len)
+  
+  test3<-KL[index, ]
+  train3<-KL[-index, ]
+  
+  fit<-lm(test3$HVAL150 ~test3$AGE60 + test3$EDUC+test3$HHLARGE+test3$SSTRVOL+test3$CPWVOL5, data = test3)
+  
+  pred0<-predict(fit, newdata = test3)
+  
+  test.all[1:len, bp]<-test3$HVAL150
+  pred[1:len, bp]<-pred0
+  pred.err[1:len, bp]<-abs(pred0-test3$HVAL150)
+}
+
+```
+
+```{r}
+boxplot(pred.err, xlab="CV", ylab="Error")
+```
+3.1 Explanation: Based on the boxplot, the model's prediction performance is "robust" because you can see the boxplots for all 6 CV's are stable and resistant to errors in the results. The model has a good performance because the data is drawn from a wide range of probability distributions that are largely unaffected by outliers or small departures from the model assumptions in the given dataset.
+
+3.2
+
+```{r}
+BP <- 6 
+KL <- oj_asmt2
+len <- floor(nrow(KL)/BP) #number of obs. in each segment
+#nrow(KL)
+bp <- 1
+index <- ((BP-1)*len+1):(BP*len)
+#index
+
+MSEmatrix<-matrix( , len, BP)
+for (bp in 1:BP)
+  {
+  index<-((bp-1)*len+1):(bp*len)
+  
+  test3<-KL[index, ]
+  train3<-KL[-index, ]
+  
+  fit<-lm(test3$HVAL150 ~test3$AGE60+test3$EDUC+test3$HHLARGE+test3$SSTRVOL+test3$CPWVOL5, data = test3)
+  
+  MSEmatrix0<-mean(fit$residuals^2)
+  
+  MSEmatrix[1:len, bp] <- MSEmatrix0
+  }
+
+
+MAEmatrix<-matrix( , len, BP)
+for (bp in 1:BP)
+  {
+  index<-((bp-1)*len+1):(bp*len)
+  
+  test3<-KL[index, ]
+  train3<-KL[-index, ]
+  
+  fit<-lm(test3$HVAL150 ~test3$AGE60+test3$EDUC+test3$HHLARGE+test3$SSTRVOL+test3$CPWVOL5, data = test3)
+  
+  MAEmatrix0<-mean(abs(fit$residuals))
+  
+  MAEmatrix[1:len, bp] <- MAEmatrix0
+  }
+
+colnames(MSEmatrix) = c("Fold MSE 1", "Fold MSE 2", "Fold MSE 3", "Fold MSE 4", "Fold MSE 5", "Fold MSE 6") 
+MSEmatrix[1,]
+
+colnames(MAEmatrix) = c("Fold MAE 1", "Fold MAE 2", "Fold MAE 3", "Fold MAE 4", "Fold MAE 5", "Fold MAE 6") 
+MAEmatrix[1,]
+
+```
+```{r}
+plot(MSEmatrix~MAEmatrix)
+```
+
+3.2 Explanation: This matrix provides the prediction results for the 6-Fold CV for MSE and MAE. Since all the data prediction results are similar and with similar absolute difference, this shows it is not biased. When we aggregate the MSE's and MAE's in this plot above, we can see that it’s a straight line so the model is very consistent, robust, and it gives a good prediction on of the 6-fold CV.
