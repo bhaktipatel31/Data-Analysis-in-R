@@ -1,0 +1,327 @@
+---
+title: "Linear Regression"
+output: html_notebook
+---
+
+```{r}
+library(readxl)
+FuelEfficiency <- read_excel("Large Scale Business Data Analysis/FuelEfficiency.xlsx")
+View(FuelEfficiency)
+``` 
+```{r}
+library(stats)
+FuelEff = FuelEfficiency[1:25, ]
+testdata = FuelEfficiency[26:nrow(FuelEfficiency), ]
+
+FuelEff
+testdata
+```
+
+
+```{r}
+#scatter plot for the response against the regressor
+plot(MPG~WT, data=FuelEfficiency, pch=16, col="coral") #MPG against Body Weight
+plot(MPG~DIS, data=FuelEfficiency, pch=15, col="coral") #MPG against displacement
+
+plot(GPM~WT, data=FuelEfficiency, pch=16, col="blue") #Visualization of GPM against body weight - has a better model fitness that using MPG & WT
+plot(GPM~DIS, data = FuelEfficiency, pch=16, col="blue") #Visualization between GPM and Displacement - has minor linear tendency but not as linear as the GPM~WT plot
+```
+
+```{r}
+# predict MPG based on WT
+# summarize the fitted simple regression model, e.g., coefficients, R2, F-stat, etc.
+m1 <- lm(MPG~WT, data = FuelEfficiency, na.action=na.omit) #na.action omits values with NA rows in the data for model fitting 
+s1 <- summary(m1)
+s1
+plot(m1)
+```
+
+```{r}
+s1<-summary(m1)
+s1$residuals
+```
+```{r}
+length(s1$residuals)
+```
+```{r}
+FuelEfficiency$MPG
+```
+```{r}
+m1$fitted.values
+```
+```{r}
+m1$residuals
+```
+```{r}
+s1$coefficients
+```
+```{r}
+m1$coefficients
+```
+
+```{r}
+Falpha <- qf(0.05, 1, 8, lower.tail = F)
+Falpha
+```
+```{r}
+Falpha <- qf(0.05, 1, 23, lower.tail = F)
+Falpha #compare this to FStatistic, we can see it's much smaller than FStatistic value and far to the right in the reject H0 region. DECISION:We are rejecting the null hypothesis at alpha=0.05. CONCLUSION: There is sufficient evidence that B1 does not equal 0. The model is statistically significant.  
+```
+```{r}
+pvalue<-pf(s1$fstatistic['value'], 1, 23, lower.tail = F)
+pvalue
+```
+```{r}
+plot(1:25, s1$residuals, type="p")
+lines(1:25, rep(0,25), col="red")
+```
+
+
+```{r}
+plot(FuelEfficiency$WT, s1$residuals, type = "p")
+lines(1:25, rep(0,25), col="red")
+```
+```{r}
+plot(m1$fitted.values, s1$residuals, type = "p")
+lines(m1$fitted.values, rep(0,25), col="red")
+plot(m1)
+```
+
+
+```{r}
+###predict MPG based on Displacement 
+m2 = lm(MPG~DIS, data = FuelEfficiency) 
+s2 = summary(m2)
+s2
+###residual standard error is the error in the variation 
+plot(m2)
+```
+
+```{r}
+# Predict GPM based on WT. GPM as response & WT as regressor
+m3 = lm(GPM~WT, data = FuelEfficiency, na.action = na.omit)
+s3 = summary(m3)
+s3
+
+plot(m3)
+```
+
+```{r}
+#Predict GPM based on Displacement
+m4 = lm(GPM~DIS, data = FuelEfficiency, na.action = na.omit)
+
+s4 = summary(m4)
+s4
+
+plot(m4)
+```
+```{r}
+testdata
+```
+
+
+```{r}
+# model fitting (training) vs. validation (testing)
+dim(testdata)
+
+pred<- predict(m3, newdata=testdata, type="response")
+pred
+
+```
+
+
+```{r}
+### Prediction
+pred = predict(m3, newdata = testdata)
+pred
+
+
+## prediction accuracy measurement -> against ground truth 
+ytrue = testdata$GPM
+ytrue
+
+#MSE -> Mean Squared Error 
+MSE = mean((pred - ytrue)^2, na.rm=T)
+MSE
+```
+
+```{r}
+#### To omit NA variables in large datasets , use na.rm = T
+x = c(1:10, NA)
+x
+xm = mean(x, na.rm = T)
+xm
+```
+
+```{r}
+ME <- mean(abs(pred-ytrue), na.rm = T)
+ME
+```
+
+```{r}
+RMSE <- function(pred,ytrue) 
+{
+  return(sqrt(mean((pred-ytrue)^2, na.rm=T)))
+}
+RMSE(pred, ytrue)
+```
+
+```{r}
+# predict MAPE between ytrue and yhat
+MAPE <- function(pred0, ytrue0, N)
+{
+  temp<-0
+  for (i in 1:N) 
+    {
+    D<-abs(pred0[i]-ytrue0[i])/ytrue0[i]
+    temp<-temp+D
+  }
+  return((100/N)*temp)
+}
+
+MAPE(pred, ytrue, nrow(testdata))
+```
+```{r}
+(pred-ytrue)^2
+```
+### MULTIPLE LINEAR REGRESSION
+
+```{r}
+library(car)
+library(lattice)
+```
+
+
+```{r}
+K<-4
+
+index<-1:nrow(FuelEfficiency)
+index
+```
+
+```{r}
+index1<-sample(x=index, size=length(index))
+index1
+```
+```{r}
+FuelEff<-FuelEfficiency[index1,]
+testing<-FuelEff[1:floor(nrow(FuelEff/4)),]
+testing
+```
+```{r}
+testing<-FuelEff[1:floor(nrow(FuelEff)/4),]
+testing
+```
+```{r}
+training <-FuelEff[(floor(nrow(FuelEff)/4)+1):nrow(FuelEff),]
+training
+```
+```{r}
+m1<-lm(GPM~WT+DIS+NC+HP+ACC+ET, data=training)
+m1
+```
+```{r}
+summary(m1)
+```
+
+```{r}
+library(quantmod)
+getSymbols("^VIX", from="2012-01-01", to="2017-02-01", src="yahoo")
+```
+
+```{r}
+mReturn=monthlyReturn(VIX$VIX.Close, type="log")
+RTS=ts(mReturn, start=2012, end=2017, frequency = 12)
+plot(RTS)
+```
+```{r}
+ar(mReturn)
+```
+```{r}
+arimaX = arima(mReturn, order = c(4,0,0))
+arimaX
+
+```
+
+```{r}
+pacf(mReturn)
+```
+```{r}
+arimaZ= arima(mReturn, order=c(4,0,0))
+arimaZ
+```
+```{r}
+acf(mReturn)
+```
+```{r}
+arimaY = arima(mReturn, order = c(0,0,1))
+arimaY
+```
+```{r}
+tsdiag(arimaY)
+```
+```{r}
+#we check stationarity:
+
+rootX = polyroot(c(1, arimaY$coef[1]))
+rootX
+
+#The roots are outside the unit circle therefore the model is stationary
+```
+```{r}
+rootY = polyroot(c(1, -arimaZ$coef[1:4]))
+rootY
+```
+```{r}
+Mod(rootY)
+# All the roots are outside the unit circle therefore the fitted model is adequate and stationary.
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
