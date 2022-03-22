@@ -1,0 +1,332 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(readr)
+por <- read_delim("C:/Users/bhakt/Downloads/student/student-por.csv", ";", escape_double = FALSE, trim_ws = TRUE)
+mat <- read_delim("C:/Users/bhakt/Downloads/student/student-mat.csv", ";", escape_double = FALSE, trim_ws = TRUE)
+#View(mat)
+
+```
+
+
+Variables to use for Y: 11, 13-15, 24-30
+```{r}
+data=merge(por,mat,by=c("school","sex","age","address","famsize","Pstatus","Medu","Fedu","Mjob","Fjob","reason","nursery","internet"))
+print(nrow(data)) # 382 students
+View(data)
+
+```
+
+```{r}
+library(prettydoc) #template
+library(readr) #for reading in the data
+library(dplyr) #exploratory data analysis
+library(ggplot2)#visualizations
+library(DT) #Printing dataframes concisely
+library(caret) #Dummy Variables for Correlation Matrix
+library(gridExtra) #Multiple plots 
+library(rpart) #Decision Tree
+library(tidyr)#exploratory data analysis
+```
+
+
+```{r}
+summary(data)
+```
+1. Number of Male vs Female Students who failed in the final exam
+```{r}
+(data2<-data%>%
+   mutate(pass=ifelse(G3.x>=10,1,0), fail= ifelse(G3.x<10,1,0))%>%
+   filter(sex=="F"|sex=="M")%>%
+   group_by(sex)%>%
+   summarise(Pass=sum(pass), Fail=sum(fail)))
+data2%>%
+  ggplot(aes(x=sex,y=Fail))+
+  geom_bar(stat="identity")+
+  ggtitle("Number of Portuguese Students who failed the final exam based on Gender")+ xlab("Gender")+ylab("Number of Portuguese Students who failed")
+
+#For portuguese, We find that the number of male students who have failed is higher than the number of female students who have failed.
+```
+
+```{r}
+(data2<-data%>%
+   mutate(pass=ifelse(G3.y>=10,1,0), fail= ifelse(G3.y<10,1,0))%>%
+   filter(sex=="F"|sex=="M")%>%
+   group_by(sex)%>%
+   summarise(Pass=sum(pass), Fail=sum(fail)))
+data2%>%
+  ggplot(aes(x=sex,y=Fail))+
+  geom_bar(stat="identity")+
+  ggtitle("Number of Math Students who failed the final exam based on Gender")+ xlab("Gender")+ylab("Number of Math Students who failed")
+
+#For math, We find that the number of female students who have failed is higher than the number of male students who have failed.
+```
+2. Average Final Score across different weekend and weekday alcohol consumption levels
+```{r}
+data%>%
+   group_by(Walc.x)%>%
+   aggregate(G3.x~Walc.x, data=., mean)%>%
+   arrange(desc(G3.x))
+```
+
+```{r}
+data%>%
+   group_by(Dalc.x)%>%
+   aggregate(G3.x~Dalc.x, data=., mean)%>%
+   arrange(desc(G3.x))
+```
+
+We will create various plots to understand the relationships between predictors in both the math and Portuguese data sets.
+```{r}
+#theme_set(theme_minimal())
+data %>%
+  gather(G3.x, G3.y, key="class", value="grades") %>%
+  ggplot() +
+  geom_bar(aes(x=grades, fill=class), position="stack") + 
+  ggtitle("Distribution of final grades in Math and Portuguese Classes") +
+  scale_fill_discrete(name = "Class", labels = c("Portuguese", "Math"))
+
+```
+```{r}
+c(mean(data$G3.x), mean(data$G3.y))
+```
+As seen in the plot and the summary statistics, the mean final grades of the students (who are in both the math and Portuguese courses) in the Portuguese course are higher than the math course.
+
+
+
+```{r}
+c(mean(data$G1.y), mean(data$G2.y), mean(data$G3.y))
+```
+For all students in math, the mean grade slightly decreases as the semester progresses.
+
+
+```{r}
+c(mean(data$G1.x), mean(data$G2.x), mean(data$G3.x))
+```
+With Portuguese, the mean grade slightly increases as the semester progresses for the Portuguese students. 
+
+
+```{r}
+portGrades <- por %>%
+  gather(G1, G2, G3, key="semester", value="grade") %>%
+  ggplot() +
+  geom_bar(aes(x=grade, fill=semester), position = "dodge")+theme(legend.position = "right") +
+  ggtitle("Portuguese Grades Distribution by Semester")
+
+mathGrades <- mat %>%
+  gather(G1, G2, G3, key="semester", value="grade") %>%
+  ggplot() +
+  geom_bar(aes(x=grade, fill=semester), position = "dodge") + 
+  ggtitle("Math Grades Distribution by Semester")
+
+grid.arrange(portGrades, mathGrades)
+
+```
+Comparing the grade distributions of math and Portuguese, we see the increasing trend in Portuguese. We observe that the decreasing trend in math is most likely due to the increasing number of students with a grade of 0. These plots inform us that G1 and G2 would be effective in predicting G3. The graphs above tell us that there are not drastic differences in grades between the subsets and all students in both Portuguese and Math.
+
+##################### BY SCHOOL ################################
+
+```{r}
+portGrades2 <- ggplot(por) +
+  geom_bar(aes(x=school, fill=as.factor(G3)), position="dodge") +
+  ggtitle("Portuguese Grade Distribution by School") + 
+  theme(legend.position = "none")
+
+mathGrades2 <- ggplot(mat) +
+  geom_bar(aes(x=school, fill=as.factor(G3)), position="dodge") +
+  ggtitle("Math Grade Distribution by School") +
+  theme(legend.position = "none")
+grid.arrange(portGrades2, mathGrades2)
+```
+We see similar trends between both schools in math and Portuguese. In general, the mean grades tend to be higher in the Gabriel Pereira (GP) school.
+
+
+
+```{r}
+schoolPort <- ggplot(por, aes(x=G3)) +
+  geom_density(aes(color=school)) +
+  ggtitle("Distribution of Portuguese students' grades by school")
+
+schoolMath <- ggplot(mat, aes(x=G3)) +
+  geom_density(aes(color=school)) +
+  ggtitle("Distribution of Math students' grades by school")
+
+grid.arrange(schoolPort, schoolMath)
+
+```
+The distribution of math grades between the two schools is similar, but the students from GP outperform those from MS in Portuguese.
+
+
+```{r}
+mjobPort <- ggplot(por, aes(x=G3)) + 
+  geom_density(aes(color=as.factor(Mjob))) + #Fjob
+  ggtitle("Distribution of Portuguese students' grades by mothers' job")
+
+mjobMath <- ggplot(mat, aes(x=G3)) + 
+  geom_density(aes(color=as.factor(Mjob))) + 
+  ggtitle("Distribution of Math students' grades by mothers' job")
+
+grid.arrange(mjobPort, mjobMath)
+```
+We see that math students whose mothers have jobs in health outperform other students. Portuguese students whose mothers stay at home seem to underperform compared to other students.
+
+
+```{r}
+fjobPort <- ggplot(por, aes(x=G3)) + 
+  geom_density(aes(color=as.factor(Fjob))) + 
+  ggtitle("Distribution of Portuguese students' grades by fathers' job")
+
+fjobMath <- ggplot(mat, aes(x=G3)) +
+  geom_density(aes(color=as.factor(Fjob))) + 
+  ggtitle("Distribution of Math students' grades by fathers' job")
+
+grid.arrange(fjobPort, fjobMath)
+```
+For both math and Portuguese, students whose fathers are teachers outperform other students.
+
+
+############# CLUSTERING ##################
+
+```{r}
+library(cluster)
+library(dbscan)
+
+
+hierclust <- agnes(por, diss=FALSE, metric="euclidian", method="complete")
+plot(hierclust, main=" ")
+```
+
+
+```{r}
+data%>%
+  ggplot(aes(x=higher.y, y=G3.y))+
+  geom_boxplot()+
+  facet_grid(~sex)+
+  ggtitle("Math Students")
+#math
+
+data%>%
+  ggplot(aes(x=higher.x, y=G3.x))+
+  geom_boxplot()+
+  facet_grid(~sex)+
+  ggtitle("Portuguese Students")
+#portguese
+```
+Here we can see the current performance vs future goals of the student based on the gender of the student.
+So we find that on an average, students who are planning on a higher education perform better than those who do not. We also find that Male students outperform female students when they plan to go for higher education and viceversa if not.
+
+
+```{r}
+data%>%
+  group_by(Walc.x)%>%
+  aggregate(G3.x~Walc.x, data=., mean)%>%
+  arrange(desc(G3.x))
+```
+
+```{r}
+data$Dalc.x <- as.factor(data$Dalc.x)
+data$Walc.x <- as.factor(data$Walc.x)
+g1a<-data %>%
+  ggplot(aes(x=Dalc.x, y=G3.x, fill= Dalc.x))+
+  geom_boxplot()+
+  coord_flip()+
+  ggtitle("Workday vs Weekend Alcohol consumption")+
+      xlab("Workday")+
+      ylab("Grade")+
+  facet_grid(~sex)
+g1b<-data %>%
+  ggplot(aes(x=Walc.x, y=G3.x, fill= Walc.x))+
+  geom_boxplot()+
+  coord_flip()+
+      xlab("Weekend")+
+      ylab("Grade")+
+  facet_grid(~sex)
+grid.arrange(g1a,g1b,ncol=1)
+```
+
+```{r}
+data$Dalc.y <- as.factor(data$Dalc.y)
+data$Walc.y <- as.factor(data$Walc.y)
+g1a<-data %>%
+  ggplot(aes(x=Dalc.y, y=G3.y, fill= Dalc.y))+
+  geom_boxplot()+
+  coord_flip()+
+  ggtitle("Work Day vs Weekend Alcohol consumption")+
+      xlab("Work Day")+
+      ylab("Grade")+
+  facet_grid(~sex)
+g1b<-data %>%
+  ggplot(aes(x=Walc.y, y=G3.y, fill= Walc.y))+
+  geom_boxplot()+
+  coord_flip()+
+      xlab("Weekend")+
+      ylab("Grade")+
+  facet_grid(~sex)
+grid.arrange(g1a,g1b,ncol=1)
+```
+
+```{r}
+#portuguese
+g2a<-data %>% 
+  group_by(address)%>%
+  ggplot(aes(x=factor(Dalc.x), y= G3.x))+
+           geom_jitter(alpha=0.6)+
+  ggtitle("Rural vs Urban Areas Alcohol Consumption")+
+    scale_x_discrete("Workday")+
+    scale_y_continuous("Grade")+
+    facet_grid(~address)
+g2b<-data %>% 
+   group_by(address)%>%
+   ggplot(aes(x=factor(Walc.x), y= G3.x))+
+           geom_jitter(alpha=0.6)+
+    scale_x_discrete("Weekend")+
+    scale_y_continuous("Grade")+
+    facet_grid(~address)
+grid.arrange(g2a,g2b,ncol=2)
+```
+```{r}
+#math
+g2a<-data %>% 
+  group_by(address)%>%
+  ggplot(aes(x=factor(Dalc.y), y= G3.y))+
+           geom_jitter(alpha=0.6)+
+    scale_x_discrete("WorkDay Alcohol")+
+    scale_y_continuous("Grade")+
+    facet_grid(~address)
+g2b<-data %>% 
+   group_by(address)%>%
+   ggplot(aes(x=factor(Walc.y), y= G3.y))+
+           geom_jitter(alpha=0.6)+
+    scale_x_discrete("Weekday Alcohol")+
+    scale_y_continuous("Grade")+
+    facet_grid(~address)
+grid.arrange(g2a,g2b,ncol=2)
+```
+
+```{r}
+data%>%
+  group_by(internet)%>%
+  ggplot(aes(x=G3.y, fill=internet))+
+  geom_density( alpha=0.8)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
