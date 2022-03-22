@@ -312,21 +312,3 @@ data%>%
   ggplot(aes(x=G3.y, fill=internet))+
   geom_density( alpha=0.8)
 ```
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
