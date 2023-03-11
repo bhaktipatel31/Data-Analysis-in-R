@@ -1,8 +1,8 @@
 
 ```{r}
 library(readr)
-por <- read_delim("C:/Users/bhakt/Downloads/student/student-por.csv", ";", escape_double = FALSE, trim_ws = TRUE)
-mat <- read_delim("C:/Users/bhakt/Downloads/student/student-mat.csv", ";", escape_double = FALSE, trim_ws = TRUE)
+por <- read_delim("student-por.csv", ";", escape_double = FALSE, trim_ws = TRUE)
+mat <- read_delim("student-mat.csv", ";", escape_double = FALSE, trim_ws = TRUE)
 #View(mat)
 
 ```
