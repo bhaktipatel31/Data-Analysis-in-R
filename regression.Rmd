@@ -2,7 +2,7 @@
 library(data.table) 
 library(car)
 
-oj_asmt2 <- read.csv("C:/Users/bhakt/Downloads/oj_asmt2.csv")
+oj_asmt2 <- read.csv("oj_asmt2.csv")
 #View(oj_asmt2)
 setDT(oj_asmt2)
 ```
