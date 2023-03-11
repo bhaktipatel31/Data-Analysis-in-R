@@ -1,5 +1,5 @@
 ```{r}
-data<-read.csv("C:/Users/bhakt/Downloads/credit default.csv")
+data<-read.csv("credit default.csv")
 View(data)
 
 ###split data into training and testing dataset
@@ -241,7 +241,7 @@ lines(c(0,1), c(0,1), lty=2)
 PART 3
 
 ```{r}
-data2<-read.csv("C:/Users/bhakt/Downloads/credit default.csv")
+data2<-read.csv("credit default.csv")
 #View(data2)
 
 data3<-data2[sample(1:nrow(data2), nrow(data2)), ]  ##we're randomly shuffling data2 in data3
@@ -371,7 +371,7 @@ accuracy
 
 
 ```{r}
-data2<-read.csv("C:/Users/bhakt/Downloads/credit default.csv")
+data2<-read.csv("credit default.csv")
 #View(data2)
 
 data3<-data2[sample(1:nrow(data2), nrow(data2)), ]  ##we're randomly shuffling data2 in data3
@@ -425,7 +425,7 @@ print(AIC)
 ```
 
 ```{r}
-data2<-read.csv("C:/Users/bhakt/Downloads/credit default.csv")
+data2<-read.csv("credit default.csv")
 #View(data2)
 
 data3<-data2[sample(1:nrow(data2), nrow(data2)), ]  ##we're randomly shuffling data2 in data3
